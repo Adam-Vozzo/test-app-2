@@ -161,7 +161,12 @@ class Minimap {
     const scale = Math.min((canvas.width - pad * 2) / (maxX - minX), (canvas.height - pad * 2) / (maxZ - minZ));
     const ox = (canvas.width - (maxX - minX) * scale) / 2;
     const oy = (canvas.height - (maxZ - minZ) * scale) / 2;
-    this.map = (x, z) => [ox + (x - minX) * scale, oy + (z - minZ) * scale];
+    this.pt = { x: 0, y: 0 };
+    this.map = (x, z) => {
+      this.pt.x = ox + (x - minX) * scale;
+      this.pt.y = oy + (z - minZ) * scale;
+      return this.pt;
+    };
     this.dpr = dpr;
 
     this.base = document.createElement('canvas');
@@ -173,9 +178,9 @@ class Minimap {
       g.beginPath();
       for (let i = 0; i <= track.n; i += 3) {
         const k = i % track.n;
-        const [x, y] = this.map(track.pos[k * 3], track.pos[k * 3 + 2]);
-        if (i === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
+        const pt = this.map(track.pos[k * 3], track.pos[k * 3 + 2]);
+        if (i === 0) g.moveTo(pt.x, pt.y);
+        else g.lineTo(pt.x, pt.y);
       }
       g.closePath();
     };
@@ -188,9 +193,9 @@ class Minimap {
     g.lineWidth = 2 * dpr;
     g.stroke();
     // Start line tick.
-    const [sx, sy] = this.map(track.pos[0], track.pos[2]);
+    const start = this.map(track.pos[0], track.pos[2]);
     g.fillStyle = '#ffcc33';
-    g.fillRect(sx - 3 * dpr, sy - 1.5 * dpr, 6 * dpr, 3 * dpr);
+    g.fillRect(start.x - 3 * dpr, start.y - 1.5 * dpr, 6 * dpr, 3 * dpr);
   }
 
   draw(dt, race) {
@@ -201,22 +206,21 @@ class Minimap {
     const d = this.dpr;
     g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     g.drawImage(this.base, 0, 0);
-    const v = { x: 0, z: 0 };
-    const order = race.racers.slice().sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
-    for (const r of order) {
-      const i = Math.floor(this.track.wrap(r.craft.s) / this.track.ds) % this.track.n;
-      v.x = this.track.pos[i * 3] + this.track.right[i * 3] * r.craft.x;
-      v.z = this.track.pos[i * 3 + 2] + this.track.right[i * 3 + 2] * r.craft.x;
-      const [x, y] = this.map(v.x, v.z);
-      g.beginPath();
-      g.arc(x, y, (r.isPlayer ? 3.6 : 2.6) * d, 0, Math.PI * 2);
-      g.fillStyle = r.isPlayer ? '#ffffff' : r.body;
-      g.fill();
-      if (r.isPlayer) {
-        g.lineWidth = 1.6 * d;
-        g.strokeStyle = '#3df2ff';
-        g.stroke();
-      }
-    }
+    // Rivals first, then the player on top.
+    for (const r of race.racers) if (!r.isPlayer) this.dot(g, r, 2.6 * d, r.body);
+    this.dot(g, race.player, 3.6 * d, '#ffffff');
+    g.lineWidth = 1.6 * d;
+    g.strokeStyle = '#3df2ff';
+    g.stroke(); // outlines the player's dot (the current path)
+  }
+
+  dot(g, racer, radius, color) {
+    const t = this.track;
+    const i = Math.floor(t.wrap(racer.craft.s) / t.ds) % t.n;
+    const pt = this.map(t.pos[i * 3] + t.right[i * 3] * racer.craft.x, t.pos[i * 3 + 2] + t.right[i * 3 + 2] * racer.craft.x);
+    g.beginPath();
+    g.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+    g.fillStyle = color;
+    g.fill();
   }
 }

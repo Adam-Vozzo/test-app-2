@@ -5,6 +5,14 @@ import { mulberry32 } from './util.js';
 
 const COUNTDOWN = 3; // seconds: 3, 2, 1, GO
 
+/** Finishers by finish time first, then everyone else by distance covered. */
+function byPlace(a, b) {
+  if (a.finished && b.finished) return a.finishTime - b.finishTime;
+  if (a.finished) return -1;
+  if (b.finished) return 1;
+  return b.craft.progress - a.craft.progress;
+}
+
 /**
  * Owns the racers, runs AI + physics, counts laps and ranks the field. Knows nothing
  * about rendering or the DOM; it reports what happened through `events`.
@@ -42,6 +50,8 @@ export class Race {
       this.racers.push(racer);
     }
     this.player = this.racers.find((r) => r.isPlayer);
+    this.crafts = this.racers.map((r) => r.craft);
+    this.standings = this.racers.slice();
     // The player's AI only drives after the finish line (autopilot during results).
     this.player.ai.skill = 0.95;
     this.player.ai.reaction = 0;
@@ -136,7 +146,7 @@ export class Race {
     const steps = Math.max(1, Math.ceil(dt / GAME.fixedStep - 1e-6));
     const h = dt / steps;
     let bump = 0;
-    const crafts = this.racers.map((r) => r.craft);
+    const crafts = this.crafts;
     for (let i = 0; i < steps; i++) {
       for (const r of this.racers) {
         const mods = r.isPlayer && !r.finished ? playerMods : r.ai.mods(player.craft.progress);
@@ -145,10 +155,13 @@ export class Race {
       bump = Math.max(bump, resolveCraftCollisions(crafts, track, player.craft));
     }
 
+    // Player feedback only while they drive; after the finish the autopilot has the wheel.
     const pc = player.craft;
-    if (pc.events.wall > 1.5) this.emit('wall', { impact: pc.events.wall, side: pc.events.wallSide });
-    if (pc.events.boost) this.emit('boost');
-    if (bump > 1) this.emit('bump', { impact: bump });
+    if (!player.finished) {
+      if (pc.events.wall > 1.5) this.emit('wall', { impact: pc.events.wall, side: pc.events.wallSide });
+      if (pc.events.boost) this.emit('boost');
+      if (bump > 1) this.emit('bump', { impact: bump });
+    }
 
     this.updateLaps();
     this.rank();
@@ -183,16 +196,8 @@ export class Race {
   }
 
   rank() {
-    const sorted = this.racers.slice().sort((a, b) => {
-      if (a.finished && b.finished) return a.finishTime - b.finishTime;
-      if (a.finished) return -1;
-      if (b.finished) return 1;
-      return b.craft.progress - a.craft.progress;
-    });
-    sorted.forEach((r, i) => {
-      r.place = i + 1;
-    });
-    this.standings = sorted;
+    const sorted = this.standings.sort(byPlace);
+    for (let i = 0; i < sorted.length; i++) sorted[i].place = i + 1;
     const p = this.player;
     if (this.phase === 'racing' && p.place < this.lastPlayerPlace) this.emit('overtake', { place: p.place });
     this.lastPlayerPlace = p.place;

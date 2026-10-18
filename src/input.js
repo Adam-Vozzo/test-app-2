@@ -206,7 +206,7 @@ export class Input {
     if (!this.enabled) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     // Presses on controls and menu panels are UI, not throttle.
-    if (closest(e.target, 'button, a, input, label, select, textarea, [data-ui], .panel, .toast')) return;
+    if (closest(e.target, 'button, a, input, label, select, textarea, [data-ui], .panel, .toast, .rotate')) return;
     if (e.cancelable) e.preventDefault();
     this.pointers.set(e.pointerId, { x0: e.clientX, x: e.clientX, y0: e.clientY });
     if (this.steerPointer === null) this.steerPointer = e.pointerId;
@@ -249,9 +249,9 @@ export class Input {
     }
   }
 
+  /** The steering pointer ({ x0, x, y0 }) in touch-slide mode, or null. */
   get touchAnchor() {
-    const p = this.steerPointer !== null ? this.pointers.get(this.steerPointer) : null;
-    return p ? { x0: p.x0, x: p.x, y0: p.y0 } : null;
+    return this.steerPointer !== null ? (this.pointers.get(this.steerPointer) ?? null) : null;
   }
 
   // --- keyboard -----------------------------------------------------------------------
@@ -274,8 +274,12 @@ export class Input {
       return;
     }
     if (closest(e.target, 'input, select, textarea')) return;
-    // Space on a focused button should press the button, not the throttle.
-    if (k === 'throttle' && e.code === 'Space' && closest(e.target, 'button')) return;
+    // Space on a focused button presses the button, not the throttle. But auto-repeat from a
+    // Space that was already held as throttle must not arm a button that gained focus since.
+    if (k === 'throttle' && e.code === 'Space' && closest(e.target, 'button')) {
+      if (e.repeat) e.preventDefault();
+      return;
+    }
     e.preventDefault();
     this.keys.add(k);
   }

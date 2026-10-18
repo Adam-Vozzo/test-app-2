@@ -76,6 +76,7 @@ export class AIDriver {
     this.reaction = 0.08 + rng() * 0.35; // seconds of hesitation at the start
     this.steer = 0;
     this.throttle = 0;
+    this._mods = { thrust: 1, vmax: 1, assist: 0 };
   }
 
   /** Rubber band: modest boost when behind the player, modest lift when ahead. */
@@ -84,7 +85,9 @@ export class AIDriver {
     const t = clamp(gap / CFG.rubberBandRange, -1, 1);
     const band = t > 0 ? t * CFG.rubberBandBehind : t * CFG.rubberBandAhead;
     const m = this.skill * (1 + band);
-    return { thrust: m, vmax: m, assist: 0 };
+    this._mods.thrust = m;
+    this._mods.vmax = m;
+    return this._mods;
   }
 
   update(dt, track, racers, time) {

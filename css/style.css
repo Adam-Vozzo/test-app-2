@@ -849,9 +849,14 @@ svg {
 }
 .res-actions {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr auto;
   gap: 10px;
   margin-top: 4px;
+}
+.res-actions .btn {
+  padding: 0 18px;
+  font-size: 18px;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -869,6 +874,11 @@ svg {
 }
 .hud.active {
   opacity: 1;
+}
+/* The faded-out HUD must not catch taps (or focus) meant for the screen underneath. */
+.hud:not(.active) .icon-btn {
+  pointer-events: none;
+  visibility: hidden;
 }
 .hud-top {
   position: absolute;

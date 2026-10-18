@@ -24,14 +24,14 @@
       <canvas id="scene" aria-label="Race view"></canvas>
 
       <!-- ===================== HUD (in race) ===================== -->
-      <div id="hud" class="hud" aria-hidden="true">
+      <div id="hud" class="hud">
         <div class="hud-top">
-          <div class="hud-pos">
+          <div class="hud-pos" aria-hidden="true">
             <span class="pos-num" id="hud-pos">6</span><span class="pos-suffix" id="hud-pos-suffix">th</span>
             <span class="pos-of">/6</span>
             <span class="pos-pop" id="hud-pos-pop"></span>
           </div>
-          <div class="hud-lap">
+          <div class="hud-lap" aria-hidden="true">
             <div class="hud-label">Lap <b id="hud-lap">1</b>/<span id="hud-laps">3</span></div>
             <div class="hud-time" id="hud-time">0:00.00</div>
             <div class="hud-best" id="hud-best"></div>
@@ -43,15 +43,15 @@
             </svg>
           </button>
         </div>
-        <canvas class="minimap" id="minimap" width="96" height="120"></canvas>
+        <canvas class="minimap" id="minimap" width="96" height="120" aria-hidden="true"></canvas>
 
-        <div class="hud-center">
+        <div class="hud-center" aria-hidden="true">
           <div class="countdown" id="hud-count"></div>
           <div class="banner" id="hud-banner"><b></b><small></small></div>
           <div class="wrongway" id="hud-wrongway">Wrong way</div>
         </div>
 
-        <div class="hud-bottom">
+        <div class="hud-bottom" aria-hidden="true">
           <div class="speedo">
             <div class="speedo-num"><span id="hud-speed">0</span><small>km/h</small></div>
             <div class="speedo-bar"><i id="hud-speedbar"></i></div>
@@ -60,10 +60,10 @@
           <div class="hold-hint" id="hud-hold">Hold anywhere to accelerate</div>
         </div>
 
-        <div class="flash flash-boost" id="flash-boost"></div>
-        <div class="flash flash-hit-left" id="flash-hit-l"></div>
-        <div class="flash flash-hit-right" id="flash-hit-r"></div>
-        <div class="touch-stick" id="touch-stick"><i></i></div>
+        <div class="flash flash-boost" id="flash-boost" aria-hidden="true"></div>
+        <div class="flash flash-hit-left" id="flash-hit-l" aria-hidden="true"></div>
+        <div class="flash flash-hit-right" id="flash-hit-r" aria-hidden="true"></div>
+        <div class="touch-stick" id="touch-stick" aria-hidden="true"><i></i></div>
       </div>
 
       <!-- ===================== TITLE ===================== -->

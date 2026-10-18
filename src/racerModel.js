@@ -257,10 +257,12 @@ export class RacerModel {
       f.mesh.scale.set(1 + boost * 0.25, 1 + boost * 0.25, len);
       f.glow.scale.setScalar((1.6 + this.throttleVis * 1.2 + boost * 1.5) * flicker);
     }
-    this.flameMat.color.set(boost ? '#9ff3ff' : '#ffb347');
+    this.flameMat.color.copy(boost ? RacerModel._flameBoost : RacerModel._flame);
     this.binderMat.opacity = 0.55 + Math.sin(this.time * 22 + this.phase) * 0.25 + Math.random() * 0.2;
     this.binderGlow.material.opacity = 0.25 + this.throttleVis * 0.35;
   }
 }
 RacerModel._m = new THREE.Matrix4();
 RacerModel._z = new THREE.Vector3(0, 0, 1);
+RacerModel._flame = new THREE.Color('#ffb347');
+RacerModel._flameBoost = new THREE.Color('#9ff3ff');
