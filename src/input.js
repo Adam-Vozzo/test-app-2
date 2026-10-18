@@ -56,6 +56,11 @@ function currentScreenAngle() {
   return 0;
 }
 
+/** Element.closest that tolerates non-element targets (document, window, text nodes). */
+function closest(target, selector) {
+  return typeof Element !== 'undefined' && target instanceof Element ? target.closest(selector) : null;
+}
+
 // ---------------------------------------------------------------------------------------
 // Input manager: hold-anywhere throttle, tilt / touch-drag steering, keyboard fallback.
 // ---------------------------------------------------------------------------------------
@@ -90,21 +95,24 @@ export class Input {
   }
 
   attach() {
-    const el = this.surface;
     const opts = { passive: false };
-    el.addEventListener('pointerdown', (e) => this._down(e), opts);
+    // Listen on window, not the canvas: "hold anywhere" must survive overlays and moments
+    // (e.g. a fullscreen transition) where hit-testing lands on <html> instead.
+    window.addEventListener('pointerdown', (e) => this._down(e), opts);
     window.addEventListener('pointermove', (e) => this._move(e), opts);
     window.addEventListener('pointerup', (e) => this._up(e), opts);
     window.addEventListener('pointercancel', (e) => this._up(e), opts);
-    // iOS: stop long-press callouts, double-tap zoom and scroll bounce on the play surface.
-    el.addEventListener(
+    // iOS: stop long-press callouts, double-tap zoom and bounce everywhere except real UI.
+    document.addEventListener(
       'touchstart',
       (e) => {
-        if (e.cancelable) e.preventDefault();
+        if (e.cancelable && !closest(e.target, 'button, a, input, label, select, textarea, [data-ui], .panel-scroll')) e.preventDefault();
       },
       opts,
     );
-    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('contextmenu', (e) => {
+      if (!closest(e.target, 'input, textarea')) e.preventDefault();
+    });
     window.addEventListener('keydown', (e) => this._key(e, true));
     window.addEventListener('keyup', (e) => this._key(e, false));
     window.addEventListener('blur', () => this.releaseAll());
@@ -196,7 +204,9 @@ export class Input {
 
   _down(e) {
     if (!this.enabled) return;
-    if (e.target instanceof Element && e.target.closest('button, a, input, label, [data-ui]')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Presses on controls and menu panels are UI, not throttle.
+    if (closest(e.target, 'button, a, input, label, select, textarea, [data-ui], .panel, .toast')) return;
     if (e.cancelable) e.preventDefault();
     this.pointers.set(e.pointerId, { x0: e.clientX, x: e.clientX, y0: e.clientY });
     if (this.steerPointer === null) this.steerPointer = e.pointerId;
@@ -258,11 +268,16 @@ export class Input {
     };
     const k = map[e.code];
     if (!k) return;
-    if (e.target instanceof Element && e.target.closest('input, select, textarea')) return;
-    if (k === 'throttle' && e.code === 'Space' && e.target instanceof Element && e.target.closest('button')) return;
+    if (!down) {
+      // Releases always count, wherever focus ended up, so a key can never stick.
+      this.keys.delete(k);
+      return;
+    }
+    if (closest(e.target, 'input, select, textarea')) return;
+    // Space on a focused button should press the button, not the throttle.
+    if (k === 'throttle' && e.code === 'Space' && closest(e.target, 'button')) return;
     e.preventDefault();
-    if (down) this.keys.add(k);
-    else this.keys.delete(k);
+    this.keys.add(k);
   }
 
   // --- per frame ----------------------------------------------------------------------
