@@ -1,0 +1,14 @@
+{
+  "name": "podrush",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portrait-mode anti-grav pod racing prototype for mobile browsers.",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

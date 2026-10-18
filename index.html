@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0e17" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="PODRUSH: a portrait-mode anti-grav pod racing prototype. Tilt to steer, hold to accelerate." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PODRUSH" />
+    <title>PODRUSH · anti-grav pod racing</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="preload" href="assets/fonts/chakra-petch-700-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="module" src="src/main.js"></script>
+  </head>
+  <body>
+    <div id="app" class="is-booting">
+      <canvas id="scene" aria-label="Race view"></canvas>
+
+      <!-- ===================== HUD (in race) ===================== -->
+      <div id="hud" class="hud" aria-hidden="true">
+        <div class="hud-top">
+          <div class="hud-pos">
+            <span class="pos-num" id="hud-pos">6</span><span class="pos-suffix" id="hud-pos-suffix">th</span>
+            <span class="pos-of">/6</span>
+            <span class="pos-pop" id="hud-pos-pop"></span>
+          </div>
+          <div class="hud-lap">
+            <div class="hud-label">Lap <b id="hud-lap">1</b>/<span id="hud-laps">3</span></div>
+            <div class="hud-time" id="hud-time">0:00.00</div>
+            <div class="hud-best" id="hud-best"></div>
+          </div>
+          <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          </button>
+        </div>
+        <canvas class="minimap" id="minimap" width="96" height="120"></canvas>
+
+        <div class="hud-center">
+          <div class="countdown" id="hud-count"></div>
+          <div class="banner" id="hud-banner"><b></b><small></small></div>
+          <div class="wrongway" id="hud-wrongway">Wrong way</div>
+        </div>
+
+        <div class="hud-bottom">
+          <div class="speedo">
+            <div class="speedo-num"><span id="hud-speed">0</span><small>km/h</small></div>
+            <div class="speedo-bar"><i id="hud-speedbar"></i></div>
+          </div>
+          <div class="steer-meter" id="hud-steer"><i></i></div>
+          <div class="hold-hint" id="hud-hold">Hold anywhere to accelerate</div>
+        </div>
+
+        <div class="flash flash-boost" id="flash-boost"></div>
+        <div class="flash flash-hit-left" id="flash-hit-l"></div>
+        <div class="flash flash-hit-right" id="flash-hit-r"></div>
+        <div class="touch-stick" id="touch-stick"><i></i></div>
+      </div>
+
+      <!-- ===================== TITLE ===================== -->
+      <section class="screen screen-title" id="screen-title" aria-labelledby="logo">
+        <header class="title-head">
+          <h1 class="logo" id="logo"><span>POD</span>RUSH</h1>
+          <p class="tagline">Anti-grav pod racing <span class="chip">prototype</span></p>
+        </header>
+        <div class="title-foot">
+          <ul class="howto" id="howto">
+            <li data-mode="tilt">
+              <svg class="howto-icon tilt" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="15" y="6" width="18" height="34" rx="4" transform="rotate(-16 24 24)" />
+                <path d="M7 30a18 18 0 0 1 2-14M41 18a18 18 0 0 1-2 14" />
+                <path d="M6 22l3-6 5 4M42 26l-3 6-5-4" />
+              </svg>
+              <div><b>Tilt</b> to steer<small>Turn your phone like a steering wheel</small></div>
+            </li>
+            <li data-mode="touch">
+              <svg class="howto-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <circle cx="24" cy="26" r="6" />
+                <path d="M10 26h-6m40 0h-6M8 22l-4 4 4 4M40 22l4 4-4 4" />
+              </svg>
+              <div><b>Slide</b> to steer<small>Keep your thumb down and slide left / right</small></div>
+            </li>
+            <li data-mode="keys">
+              <svg class="howto-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="4" y="16" width="16" height="16" rx="3" />
+                <rect x="28" y="16" width="16" height="16" rx="3" />
+                <path d="M14 20l-4 4 4 4M34 20l4 4-4 4" />
+              </svg>
+              <div><b>&larr; &rarr;</b> to steer<small>Or A / D</small></div>
+            </li>
+            <li>
+              <svg class="howto-icon hold" viewBox="0 0 48 48" aria-hidden="true">
+                <circle cx="24" cy="24" r="7" />
+                <circle cx="24" cy="24" r="13" opacity=".55" />
+                <circle cx="24" cy="24" r="19" opacity=".25" />
+              </svg>
+              <div>
+                <b>Hold</b> to accelerate<small class="when-touch">Anywhere on the screen. Let go to brake</small
+                ><small class="when-keys">Mouse, Space or &uarr;. Let go to brake</small>
+              </div>
+            </li>
+          </ul>
+          <button class="btn btn-primary btn-race" id="btn-race" type="button"><span>Race</span></button>
+          <div class="title-row">
+            <button class="btn btn-ghost btn-small" id="btn-settings" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8.3 4.6-.1-1.2 1.8-1.5-1.9-3.3-2.3.8a7.6 7.6 0 0 0-2-1.2L15.5 4h-3.8l-.4 2.4c-.7.3-1.4.7-2 1.2l-2.3-.8-1.9 3.3 1.8 1.5a7 7 0 0 0 0 2.4L5.1 15.5 7 18.8l2.3-.8c.6.5 1.3.9 2 1.2l.4 2.4h3.8l.4-2.4c.7-.3 1.4-.7 2-1.2l2.3.8 1.9-3.3-1.8-1.5Z"
+                />
+              </svg>
+              <span>Settings</span>
+            </button>
+            <div class="best" id="title-best"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== READY (learn by doing) ===================== -->
+      <section class="screen screen-ready passthrough" id="screen-ready" aria-live="polite">
+        <div class="ready-top">
+          <button class="btn btn-ghost btn-small" id="btn-ready-back" type="button" data-ui>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg><span>Menu</span>
+          </button>
+          <div class="pill" id="ready-pill">3 laps · start 6th</div>
+        </div>
+        <div class="ready-card">
+          <div class="tilt-demo" id="ready-demo">
+            <svg class="demo-phone" id="demo-phone" viewBox="0 0 60 100" aria-hidden="true">
+              <rect x="6" y="4" width="48" height="92" rx="9" />
+              <rect x="22" y="9" width="16" height="3" rx="1.5" class="notch" />
+            </svg>
+          </div>
+          <div class="ready-meter">
+            <div class="meter" id="ready-meter"><i></i></div>
+          </div>
+          <p class="ready-text" id="ready-text">Tilt your phone like a steering wheel</p>
+        </div>
+        <div class="hold-zone">
+          <div class="hold-ring" id="hold-ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-bg" cx="60" cy="60" r="52" />
+              <circle class="ring-fg" id="hold-ring-fg" cx="60" cy="60" r="52" />
+            </svg>
+            <span class="hold-dot"></span>
+          </div>
+          <div class="hold-label" id="hold-label">Hold anywhere to start</div>
+        </div>
+      </section>
+
+      <!-- ===================== PAUSE ===================== -->
+      <section class="screen screen-modal" id="screen-pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div class="panel">
+          <h2 id="pause-title">Paused</h2>
+          <button class="btn btn-primary" id="btn-resume" type="button"><span>Resume</span></button>
+          <button class="btn" id="btn-recenter" type="button"><span>Recenter steering</span></button>
+          <p class="hint" id="recenter-hint">Hold your phone the way you like to play, then tap recenter.</p>
+          <button class="btn" id="btn-restart" type="button"><span>Restart race</span></button>
+          <button class="btn" id="btn-pause-settings" type="button"><span>Settings</span></button>
+          <button class="btn btn-ghost" id="btn-quit" type="button"><span>Quit to menu</span></button>
+        </div>
+      </section>
+
+      <!-- ===================== SETTINGS ===================== -->
+      <section class="screen screen-modal" id="screen-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="panel panel-scroll">
+          <h2 id="settings-title">Settings</h2>
+          <div class="setting">
+            <div class="setting-label">Steering</div>
+            <div class="segmented" data-setting="controlMode" role="radiogroup" aria-label="Steering">
+              <button type="button" role="radio" data-value="tilt">Tilt</button>
+              <button type="button" role="radio" data-value="touch">Touch slide</button>
+            </div>
+            <p class="setting-note" id="tilt-note"></p>
+          </div>
+          <div class="setting" data-when="tilt">
+            <div class="setting-label">Tilt sensitivity</div>
+            <div class="segmented" data-setting="sensitivity" role="radiogroup" aria-label="Tilt sensitivity">
+              <button type="button" role="radio" data-value="low">Low</button>
+              <button type="button" role="radio" data-value="medium">Medium</button>
+              <button type="button" role="radio" data-value="high">High</button>
+            </div>
+            <div class="meter meter-live" id="settings-meter"><i></i></div>
+            <p class="setting-note">Try it: the bar shows your steering right now.</p>
+          </div>
+          <div class="setting">
+            <div class="setting-label">Steering assist</div>
+            <div class="segmented" data-setting="assist" role="radiogroup" aria-label="Steering assist">
+              <button type="button" role="radio" data-value="off">Off</button>
+              <button type="button" role="radio" data-value="low">Low</button>
+              <button type="button" role="radio" data-value="high">High</button>
+            </div>
+            <p class="setting-note">Helps you hold your line through long corners.</p>
+          </div>
+          <div class="setting toggles">
+            <label class="toggle"><input type="checkbox" data-setting="sound" /><span>Sound</span></label>
+            <label class="toggle" id="toggle-haptics"><input type="checkbox" data-setting="haptics" /><span>Vibration</span></label>
+            <label class="toggle"><input type="checkbox" data-setting="reducedMotion" /><span>Reduce motion</span></label>
+            <label class="toggle" data-when="tilt"><input type="checkbox" data-setting="invertTilt" /><span>Invert tilt</span></label>
+          </div>
+          <div class="panel-foot">
+            <button class="btn btn-primary" id="btn-settings-done" type="button"><span>Done</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== RESULTS ===================== -->
+      <section class="screen screen-results" id="screen-results" role="dialog" aria-modal="true" aria-labelledby="res-title">
+        <div class="panel results-panel">
+          <div class="res-head">
+            <div class="res-place" id="res-place"><span id="res-num">1</span><small id="res-suffix">st</small></div>
+            <div>
+              <h2 id="res-title">Finished</h2>
+              <div class="res-time" id="res-time"></div>
+            </div>
+          </div>
+          <div class="res-badges" id="res-badges"></div>
+          <ol class="standings" id="res-standings"></ol>
+          <div class="res-actions">
+            <button class="btn btn-primary" id="btn-again" type="button"><span>Race again</span></button>
+            <button class="btn btn-ghost" id="btn-menu" type="button"><span>Menu</span></button>
+          </div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <div class="rotate" id="rotate" aria-live="assertive">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="20" y="8" width="24" height="44" rx="5" />
+          <path d="M8 40a24 24 0 0 0 16 16M56 24A24 24 0 0 0 40 8" />
+        </svg>
+        <p>Turn your phone upright</p>
+        <small>PODRUSH is built for portrait. Tip: turn on portrait lock so big steers never rotate the screen.</small>
+      </div>
+
+      <div class="boot" id="boot">
+        <div class="logo logo-small"><span>POD</span>RUSH</div>
+        <div class="boot-bar"><i></i></div>
+        <p id="boot-text">Warming up engines…</p>
+        <noscript><p>PODRUSH needs JavaScript to run.</p></noscript>
+      </div>
+    </div>
+    <aside class="desk-hint" aria-hidden="true">
+      <b>Best on your phone.</b>
+      <span
+        >Open this page on a phone in portrait to steer by tilting. On desktop: &larr; &rarr; steer, hold Space or the mouse to
+        accelerate.</span
+      >
+    </aside>
+  </body>
+</html>
