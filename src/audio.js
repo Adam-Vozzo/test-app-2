@@ -20,7 +20,7 @@ export class AudioEngine {
       }
       this.build();
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    this.resume();
   }
 
   build() {
@@ -95,8 +95,9 @@ export class AudioEngine {
     if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
   }
 
+  /** Resume from 'suspended' and from iOS's 'interrupted' (calls, Siri, alarms). */
   resume() {
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume().catch(() => {});
   }
 
   /**

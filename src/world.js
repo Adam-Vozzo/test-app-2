@@ -23,6 +23,8 @@ export class World {
     this.pixelRatio = this.maxPixelRatio;
     this.frameTimes = [];
     this.goodWindows = 0;
+    this.trial = null; // pending resolution drop being evaluated
+    this.floor = 0; // lowest pixel ratio a drop is still worth trying from
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(PALETTE.fog, 170, 1500);
@@ -68,7 +70,11 @@ export class World {
     this.lastTick = -1;
 
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    // Resizing clears the canvas, so redraw at once (nothing else renders while paused).
+    window.addEventListener('resize', () => {
+      this.resize();
+      this.render();
+    });
   }
 
   resize() {
@@ -81,27 +87,41 @@ export class World {
     this.aspect = w / h;
   }
 
-  /** Lower or raise render resolution to hold frame rate. */
+  setPixelRatio(ratio) {
+    this.pixelRatio = ratio;
+    this.resize();
+    this.render();
+  }
+
+  /**
+   * Lower or raise render resolution to hold frame rate. A drop is a trial that is kept
+   * only if frames really got faster: under a fixed 30 fps cap (iOS Low Power Mode,
+   * Android battery saver) they don't, so the drop is undone and not retried.
+   */
   adaptQuality(frameMs) {
     this.frameTimes.push(frameMs);
     if (this.frameTimes.length < 90) return;
     const sorted = this.frameTimes.slice().sort((a, b) => a - b);
     const p50 = sorted[Math.floor(sorted.length * 0.5)];
     this.frameTimes.length = 0;
-    let next = this.pixelRatio;
-    if (p50 > 21 && this.pixelRatio > 0.75) {
-      next = Math.max(0.75, this.pixelRatio - 0.25);
+    if (this.trial) {
+      if (p50 > this.trial.before * 0.88) {
+        this.floor = this.trial.ratio;
+        this.setPixelRatio(this.trial.ratio);
+      }
+      this.trial = null;
+      return;
+    }
+    if (p50 > 21 && this.pixelRatio - 0.25 >= Math.max(0.75, this.floor)) {
+      this.trial = { before: p50, ratio: this.pixelRatio };
       this.goodWindows = 0;
+      this.setPixelRatio(this.pixelRatio - 0.25);
     } else if (p50 < 14) {
       this.goodWindows++;
       if (this.goodWindows >= 4 && this.pixelRatio < this.maxPixelRatio) {
-        next = Math.min(this.maxPixelRatio, this.pixelRatio + 0.25);
         this.goodWindows = 0;
+        this.setPixelRatio(Math.min(this.maxPixelRatio, this.pixelRatio + 0.25));
       }
-    }
-    if (next !== this.pixelRatio) {
-      this.pixelRatio = next;
-      this.resize();
     }
   }
 

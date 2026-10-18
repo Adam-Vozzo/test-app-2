@@ -18,24 +18,60 @@ export class UI {
     this.settingsReturn = null;
     this.toastTimer = 0;
 
-    const click = (id, fn) =>
-      $(id).addEventListener('click', (e) => {
-        e.preventDefault();
+    // Browsers send no `click` for a tap made while another finger is down, and in a
+    // hold-to-accelerate game a finger usually is. Buttons that can be reached mid-race
+    // therefore fire from pointer events: 'down' (pause: instant) or 'tap' (down + up on
+    // the button). `click` stays as the keyboard / assistive-tech path. Plain 'click' is
+    // kept where the press may trigger the iOS motion prompt, which wants a real click.
+    const bind = (id, fn, mode = 'click') => {
+      const el = $(id);
+      let armed = null;
+      let pointerAt = -Infinity; // last time a pointer path handled a press
+      const fire = () => {
         this.h.onUiTap?.();
         fn();
+      };
+      if (mode !== 'click') {
+        el.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          armed = e.pointerId;
+          if (mode === 'down') {
+            pointerAt = Infinity; // swallow the click this press may still produce
+            fire();
+          }
+        });
+        // Watch the release on window: after a 'down' press opens a menu, a mouse release
+        // lands on that menu, not on this button, and must still be seen.
+        const release = (e, cancelled) => {
+          if (e.pointerId !== armed) return;
+          armed = null;
+          pointerAt = performance.now();
+          if (mode === 'tap' && !cancelled) {
+            const r = el.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) fire();
+          }
+        };
+        window.addEventListener('pointerup', (e) => release(e, false), true);
+        window.addEventListener('pointercancel', (e) => release(e, true), true);
+      }
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (performance.now() - pointerAt < 700) return;
+        fire();
       });
-    click('btn-race', () => this.h.onRace());
-    click('btn-settings', () => this.openSettings('title'));
-    click('btn-ready-back', () => this.h.onQuit());
-    click('btn-pause', () => this.h.onPause());
-    click('btn-resume', () => this.h.onResume());
-    click('btn-recenter', () => this.h.onRecenter());
-    click('btn-restart', () => this.h.onRestart());
-    click('btn-pause-settings', () => this.openSettings('pause'));
-    click('btn-quit', () => this.h.onQuit());
-    click('btn-settings-done', () => this.closeSettings());
-    click('btn-again', () => this.h.onRestart());
-    click('btn-menu', () => this.h.onQuit());
+    };
+    bind('btn-race', () => this.h.onRace());
+    bind('btn-settings', () => this.openSettings('title'));
+    bind('btn-ready-back', () => this.h.onQuit(), 'tap');
+    bind('btn-pause', () => this.h.onPause(), 'down');
+    bind('btn-resume', () => this.h.onResume(), 'tap');
+    bind('btn-recenter', () => this.h.onRecenter(), 'tap');
+    bind('btn-restart', () => this.h.onRestart(), 'tap');
+    bind('btn-pause-settings', () => this.openSettings('pause'), 'tap');
+    bind('btn-quit', () => this.h.onQuit(), 'tap');
+    bind('btn-settings-done', () => this.closeSettings(), 'tap');
+    bind('btn-again', () => this.h.onRestart(), 'tap');
+    bind('btn-menu', () => this.h.onQuit(), 'tap');
 
     // Segmented controls behave as radio groups (arrow keys move the selection).
     for (const group of document.querySelectorAll('.segmented')) {

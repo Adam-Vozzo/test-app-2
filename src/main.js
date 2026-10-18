@@ -31,6 +31,7 @@ let finishBadges = [];
 let tiltState = 'unknown'; // unknown | pending | granted | denied | unavailable
 let wakeLock = null;
 let readyTextFor = null;
+let standingsTimer = 0;
 let pausedByRotation = false;
 let last = performance.now();
 
@@ -97,6 +98,7 @@ async function boot() {
 
   applySettings();
   window.addEventListener('keydown', onKey);
+  for (const type of ['pointerup', 'touchend']) window.addEventListener(type, () => audio.unlock(), { passive: true });
   document.addEventListener('visibilitychange', onVisibility);
   const landscape = matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 600px)');
   const onOrient = () => {
@@ -436,7 +438,11 @@ function frame(now) {
         world.rig.setMode('finish');
         ui.showResults(race, finishBadges);
       }
-      if (ui.current === 'results') ui.updateStandings(race);
+      standingsTimer -= dt;
+      if (ui.current === 'results' && standingsTimer <= 0) {
+        standingsTimer = 0.25;
+        ui.updateStandings(race);
+      }
       break;
     default:
       break;
@@ -463,8 +469,10 @@ function frame(now) {
 }
 
 function updateReady(dt) {
-  // Rev the engine and fill the ring while holding; release drains it.
-  holdTime = input.holding ? holdTime + dt : Math.max(0, holdTime - dt * 2.5);
+  // Rev the engine and fill the ring while holding; release drains it. Never while the
+  // rotate overlay is up: the race would start where the player can't see it.
+  const blocked = app.classList.contains('landscape-phone');
+  holdTime = input.holding && !blocked ? holdTime + dt : Math.max(0, holdTime - dt * 2.5);
   const t = clamp(holdTime / HOLD_TO_START, 0, 1);
   document.getElementById('hold-ring').style.setProperty('--hold', t.toFixed(3));
   const tiltDeg = input.tiltReady ? clamp((wrapAngle(input.tilt - input.neutral) * 180) / Math.PI, -50, 50) : 0;
